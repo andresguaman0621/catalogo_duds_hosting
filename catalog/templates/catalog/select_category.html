@@ -1,0 +1,66 @@
+<!-- catalog/templates/catalog/select_category.html -->
+{% extends 'catalog/base.html' %}
+<!-- Contenedor principal -->
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h1 class="text-2xl font-semibold text-gray-900 mb-6">
+      Categorías Disponibles
+    </h1>
+
+    <form id="categoryForm" method="GET" class="space-y-4">
+      {% for category in categories %}
+      <div class="relative">
+        <input
+          type="radio"
+          id="category-{{ forloop.counter }}"
+          name="category"
+          value="{{ category }}"
+          class="peer hidden"
+          {%
+          if
+          forloop.first
+          %}checked{%
+          endif
+          %}
+        />
+        <label
+          for="category-{{ forloop.counter }}"
+          class="block w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 peer-checked:bg-gray-50 hover:bg-gray-50 transition-all duration-100"
+        >
+          <span class="text-gray-900 peer-checked:font-medium"
+            >{{ category }}</span
+          >
+        </label>
+      </div>
+      {% endfor %}
+
+      <div class="flex justify-end mt-6">
+        <button
+          type="submit"
+          class="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+        >
+          Continuar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %} {% block extra_scripts %}
+<script>
+  document
+    .getElementById("categoryForm")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+      const selectedCategory = document.querySelector(
+        'input[name="category"]:checked'
+      ).value;
+      const encodedCategory = encodeURIComponent(selectedCategory);
+      window.location.href =
+        "{% url 'select_size' 'CATEGORY_PLACEHOLDER' %}".replace(
+          "CATEGORY_PLACEHOLDER",
+          encodedCategory
+        )
+    });
+</script>
+{% endblock %}

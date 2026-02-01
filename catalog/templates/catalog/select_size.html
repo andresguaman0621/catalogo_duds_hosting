@@ -1,0 +1,174 @@
+{% extends 'catalog/base.html' %} {% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h1 class="text-2xl font-semibold text-gray-900 mb-6">
+      Seleccionas las Tallas para {{ category }}
+    </h1>
+
+    {% if error %}
+    <div class="mb-4 p-4 bg-red-50 text-red-700 rounded-md">{{ error }}</div>
+    {% endif %}
+
+    <form id="sizeForm" class="space-y-4">
+      {% csrf_token %}
+
+      <!-- Grid de tallas -->
+      <div class="grid grid-cols-2 gap-4">
+        {% for size in sizes %}
+        <div class="relative">
+          <input
+            type="checkbox"
+            id="size-{{ size }}"
+            name="sizes"
+            value="{{ size }}"
+            class="peer hidden"
+          />
+          <label
+            for="size-{{ size }}"
+            class="block w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 hover:bg-gray-50 transition-all"
+          >
+            <span class="text-gray-900 peer-checked:font-medium"
+              >{{ size }}</span
+            >
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Botn de descarga -->
+      <div class="flex justify-end mt-6">
+        <button
+          type="button"
+          id="downloadButton"
+          class="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          Descargar Catálogo
+        </button>
+      </div>
+    </form>
+
+    <!-- Loading indicator -->
+    <div id="loadingIndicator" class="hidden mt-4 text-center">
+      <div
+        class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"
+      ></div>
+      <p class="mt-2 text-sm text-gray-600">Generando PDFs...</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_scripts %}
+<script>
+  document.getElementById("downloadButton").addEventListener("click", async function () {
+  const selectedSizes = Array.from(
+    document.querySelectorAll('input[name="sizes"]:checked')
+  ).map((input) => input.value);
+
+  if (selectedSizes.length === 0) {
+    alert("Selecciona al menos una talla para continuar");
+    return;
+  }
+
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  const downloadButton = document.getElementById("downloadButton");
+  
+  // Deshabilitar el botón durante la descarga
+  downloadButton.disabled = true;
+  loadingIndicator.classList.remove("hidden");
+
+  try {
+    const category = encodeURIComponent("{{ category }}");
+    const response = await fetch(
+      `/generate_pdfs/${category}/${selectedSizes.join(",")}/`
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    const contentType = response.headers.get("content-type");
+
+    if (contentType && contentType.includes("application/pdf")) {
+      // Solo un PDF - descarga directa
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${decodeURIComponent(category)}_${selectedSizes[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else if (contentType && contentType.includes("application/json")) {
+      // Múltiples PDFs
+      const data = await response.json();
+
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      
+      // Mostrar mensaje de descarga en progreso
+      const downloadStatus = document.createElement("div");
+      downloadStatus.className = "mt-4 p-4 bg-blue-50 text-blue-700 rounded-md";
+      downloadStatus.innerHTML = `<p>Descargando ${data.files.length} archivos...</p>
+                                 <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                   <div class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                                 </div>`;
+      document.querySelector('.max-w-2xl').appendChild(downloadStatus);
+      
+      const progressBar = downloadStatus.querySelector('.bg-blue-600');
+      
+      // Descargar múltiples PDFs con un retraso entre cada uno para evitar bloqueos
+      for (let i = 0; i < data.files.length; i++) {
+        const file = data.files[i];
+        
+        // Actualizar barra de progreso
+        const progress = Math.round(((i + 1) / data.files.length) * 100);
+        progressBar.style.width = `${progress}%`;
+        
+        // Descargar archivo
+        const a = document.createElement("a");
+        a.href = file.url;
+        a.download = file.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Esperar un breve momento entre descargas
+        if (i < data.files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+      
+      // Actualizar mensaje cuando todas las descargas están completas
+      downloadStatus.innerHTML = `<p class="text-green-700">¡Descarga de ${data.files.length} archivos completada!</p>`;
+      setTimeout(() => {
+        downloadStatus.remove();
+      }, 5000);
+    } else {
+      throw new Error("Tipo de respuesta no soportado: " + contentType);
+    }
+  } catch (error) {
+    alert("Error al generar los PDFs: " + error.message);
+  } finally {
+    loadingIndicator.classList.add("hidden");
+    downloadButton.disabled = false;
+  }
+});
+</script>
+{% endblock %}

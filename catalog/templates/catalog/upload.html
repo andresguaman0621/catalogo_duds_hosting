@@ -1,0 +1,165 @@
+<!-- catalog/templates/catalog/upload.html -->
+{% extends 'catalog/base.html' %}
+<!-- Contenedor principal -->
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="p-6">
+      <h1 class="text-2xl font-semibold text-gray-900 mb-6">
+        Subir Archivo CSV
+      </h1>
+
+      {% if error %}
+      <div class="mb-4 p-4 bg-red-50 text-red-700 rounded-md">{{ error }}</div>
+      {% endif %}
+
+      <form
+        method="post"
+        enctype="multipart/form-data"
+        class="space-y-4"
+        id="uploadForm"
+      >
+        {% csrf_token %}
+
+        <!-- Área de carga de archivo -->
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8">
+          <div class="flex flex-col items-center justify-center space-y-4">
+            <!-- Ícono de carga -->
+            <svg
+              class="h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+
+            <!-- Botón de selección de archivo -->
+            <div class="flex flex-col items-center">
+              <label
+                for="file-upload"
+                class="bg-black text-white px-6 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition-colors"
+              >
+                Seleccionar Archivo CSV
+              </label>
+              <input
+                id="file-upload"
+                name="file"
+                type="file"
+                accept=".csv"
+                class="hidden"
+                required
+              />
+              <p class="mt-2 text-sm text-gray-500">
+                o arrastra y suelta tu archivo aquí
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Texto del archivo seleccionado -->
+        <p
+          id="selected-file"
+          class="text-sm text-gray-500 text-center hidden"
+        ></p>
+
+        <!-- Botón de Subir -->
+        <div class="flex justify-center mt-6">
+          <button
+            type="submit"
+            class="bg-black text-white px-8 py-2 rounded-md hover:bg-gray-800 transition-colors"
+            id="uploadButton"
+          >
+            Subir
+          </button>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="hidden mt-4 text-center">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"
+          ></div>
+          <p class="mt-2 text-sm text-gray-600">Procesando Archivo...</p>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<!-- Script para mostrar el nombre del archivo seleccionado y mostrar el indicador de carga -->
+{% block extra_scripts %}
+<script>
+  const uploadForm = document.getElementById("uploadForm");
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  const uploadButton = document.getElementById("uploadButton");
+
+  // Mostrar nombre de archivo seleccionado
+  document
+    .getElementById("file-upload")
+    .addEventListener("change", function (e) {
+      const fileName = e.target.files[0]?.name;
+      const selectedFile = document.getElementById("selected-file");
+      if (fileName) {
+        selectedFile.textContent = `Archivo seleccionado: ${fileName}`;
+        selectedFile.classList.remove("hidden");
+      } else {
+        selectedFile.classList.add("hidden");
+      }
+    });
+
+  // Mostrar el indicador de carga cuando se presiona el botón "Subir"
+  uploadForm.addEventListener("submit", function (e) {
+    // Mostrar el indicador de carga
+    loadingIndicator.classList.remove("hidden");
+
+    // Deshabilitar el botón de subir para evitar múltiples envíos
+    uploadButton.disabled = true;
+  });
+
+  // Funcionalidad de drag and drop
+  const dropZone = document.querySelector(".border-dashed");
+
+  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, highlight, false);
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+  });
+
+  function highlight(e) {
+    dropZone.classList.add("border-black");
+  }
+
+  function unhighlight(e) {
+    dropZone.classList.remove("border-black");
+  }
+
+  dropZone.addEventListener("drop", handleDrop, false);
+
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    const fileInput = document.getElementById("file-upload");
+
+    fileInput.files = files;
+    const event = new Event("change");
+    fileInput.dispatchEvent(event);
+  }
+</script>
+{% endblock %}
