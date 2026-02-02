@@ -20,7 +20,9 @@ import uuid
 import tempfile
 
 PRODUCTS_CACHE_KEY = 'wordpress_products'
+PRODUCTS_CACHE_TIMESTAMP_KEY = 'wordpress_products_timestamp'
 PRODUCTS_CACHE_TTL = 300  # 5 minutos
+LOW_STOCK_THRESHOLD = 3
 
 PDF_TEMP_DIR = os.path.join(tempfile.gettempdir(), 'duds_pdfs')
 os.makedirs(PDF_TEMP_DIR, exist_ok=True)
@@ -101,7 +103,19 @@ def get_cached_products():
     if products is None:
         products = fetch_wordpress_products()
         cache.set(PRODUCTS_CACHE_KEY, products, PRODUCTS_CACHE_TTL)
+        cache.set(PRODUCTS_CACHE_TIMESTAMP_KEY, timezone.localtime(), PRODUCTS_CACHE_TTL)
     return products
+
+
+def _get_cache_timestamp():
+    """Retorna el timestamp de la última carga de datos"""
+    return cache.get(PRODUCTS_CACHE_TIMESTAMP_KEY)
+
+
+def _invalidate_cache():
+    """Invalida el cache de productos para forzar recarga"""
+    cache.delete(PRODUCTS_CACHE_KEY)
+    cache.delete(PRODUCTS_CACHE_TIMESTAMP_KEY)
 
 
 def _prefetch_images(products):
@@ -124,21 +138,68 @@ def select_category(request):
     from .utils import categories
 
     products = get_cached_products()
-    product_categories = {
-        cat for cat in (categorize_product(p.name) for p in products)
-        if cat != "Sin categoría"
-    }
 
-    available_categories = {cat: categories[cat] for cat in product_categories if cat in categories}
+    # Conteo y stock bajo por categoría
+    category_stats = {}
+    for p in products:
+        cat = categorize_product(p.name)
+        if cat == "Sin categoría" or cat not in categories:
+            continue
+        if cat not in category_stats:
+            category_stats[cat] = {'count': 0, 'low_stock': 0}
+        category_stats[cat]['count'] += 1
+        if p.stock <= LOW_STOCK_THRESHOLD:
+            category_stats[cat]['low_stock'] += 1
 
-    return render(request, 'catalog/select_category.html', {'categories': available_categories})
+    # Lista de tuplas: (nombre, count, low_stock)
+    available_categories = [
+        (cat, category_stats[cat]['count'], category_stats[cat]['low_stock'])
+        for cat in categories
+        if cat in category_stats
+    ]
+
+    last_updated = _get_cache_timestamp()
+
+    return render(request, 'catalog/select_category.html', {
+        'categories': available_categories,
+        'last_updated': last_updated,
+    })
+
+
+@login_required
+def refresh_data(request):
+    """Invalida el cache y redirige a select_category"""
+    _invalidate_cache()
+    return redirect('select_category')
+
+
+SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+
+def _sort_sizes(sizes):
+    """Ordena tallas según el estándar de tallas de ropa (XS, S, M, L...)"""
+    order_map = {s: i for i, s in enumerate(SIZE_ORDER)}
+    known = sorted([s for s in sizes if s in order_map], key=lambda s: order_map[s])
+    unknown = sorted(s for s in sizes if s not in order_map)
+    return known + unknown
 
 
 @login_required
 def select_size(request, category):
     decoded_category = unquote(category)
     products = get_cached_products()
-    sizes = {p.size for p in products if categorize_product(p.name) == decoded_category}
+    category_products = [p for p in products if categorize_product(p.name) == decoded_category]
+
+    # Contar productos y stock bajo por talla
+    size_stats = {}
+    for p in category_products:
+        if p.size not in size_stats:
+            size_stats[p.size] = {'count': 0, 'low_stock': 0}
+        size_stats[p.size]['count'] += 1
+        if p.stock <= LOW_STOCK_THRESHOLD:
+            size_stats[p.size]['low_stock'] += 1
+
+    sorted_sizes = _sort_sizes(size_stats.keys())
+    sizes = [(s, size_stats[s]['count'], size_stats[s]['low_stock']) for s in sorted_sizes]
 
     if request.method == 'POST':
         selected_sizes = request.POST.getlist('sizes')

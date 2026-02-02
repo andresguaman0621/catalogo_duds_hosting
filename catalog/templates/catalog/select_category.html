@@ -1,15 +1,37 @@
 <!-- catalog/templates/catalog/select_category.html -->
 {% extends 'catalog/base.html' %}
-<!-- Contenedor principal -->
+{% load tz %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-8">
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">
-      Categorías Disponibles
-    </h1>
+
+    <!-- Header con titulo y controles -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-gray-900">
+        Categorias Disponibles
+      </h1>
+      <a
+        href="{% url 'refresh_data' %}"
+        class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        title="Actualizar datos"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" />
+        </svg>
+        Actualizar
+      </a>
+    </div>
+
+    <!-- Indicador de ultima actualizacion -->
+    {% if last_updated %}
+    <p class="text-xs text-gray-400 mb-4">
+      Datos cargados: {{ last_updated|date:"d/m/Y H:i" }}
+    </p>
+    {% endif %}
 
     <form id="categoryForm" method="GET" class="space-y-4">
-      {% for category in categories %}
+      {% for category, count, low_stock in categories %}
       <div class="relative">
         <input
           type="radio"
@@ -17,20 +39,21 @@
           name="category"
           value="{{ category }}"
           class="peer hidden"
-          {%
-          if
-          forloop.first
-          %}checked{%
-          endif
-          %}
+          {% if forloop.first %}checked{% endif %}
         />
         <label
           for="category-{{ forloop.counter }}"
-          class="block w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 peer-checked:bg-gray-50 hover:bg-gray-50 transition-all duration-100"
+          class="flex items-center justify-between w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 peer-checked:bg-gray-50 hover:bg-gray-50 transition-all duration-100"
         >
-          <span class="text-gray-900 peer-checked:font-medium"
-            >{{ category }}</span
-          >
+          <span class="text-gray-900 peer-checked:font-medium">{{ category }}</span>
+          <span class="flex items-center gap-3">
+            {% if low_stock > 0 %}
+            <span class="text-xs text-amber-500" title="{{ low_stock }} producto{{ low_stock|pluralize }} con stock bajo">
+              {{ low_stock }} stock bajo
+            </span>
+            {% endif %}
+            <span class="text-xs text-gray-400">{{ count }} prod.</span>
+          </span>
         </label>
       </div>
       {% endfor %}
@@ -46,7 +69,9 @@
     </form>
   </div>
 </div>
-{% endblock %} {% block extra_scripts %}
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
   document
     .getElementById("categoryForm")
@@ -60,7 +85,7 @@
         "{% url 'select_size' 'CATEGORY_PLACEHOLDER' %}".replace(
           "CATEGORY_PLACEHOLDER",
           encodedCategory
-        )
+        );
     });
 </script>
 {% endblock %}
