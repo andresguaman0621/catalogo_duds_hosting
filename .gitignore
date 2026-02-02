@@ -31,3 +31,4 @@ Desktop.ini
 dist/
 build/
 *.egg-info/
+/.claude
