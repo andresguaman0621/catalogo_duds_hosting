@@ -138,13 +138,13 @@ def select_category(request):
 
     products = get_cached_products()
 
-    # Conteo de productos por categoría
+    # Stock total por categoría (suma de unidades disponibles)
     category_counts = {}
     for p in products:
         cat = categorize_product(p.name)
         if cat == "Sin categoría" or cat not in categories:
             continue
-        category_counts[cat] = category_counts.get(cat, 0) + 1
+        category_counts[cat] = category_counts.get(cat, 0) + p.stock
 
     available_categories = [
         (cat, category_counts[cat])
@@ -183,10 +183,10 @@ def select_size(request, category):
     products = get_cached_products()
     category_products = [p for p in products if categorize_product(p.name) == decoded_category]
 
-    # Contar productos por talla
+    # Stock total por talla (suma de unidades disponibles)
     size_counts = {}
     for p in category_products:
-        size_counts[p.size] = size_counts.get(p.size, 0) + 1
+        size_counts[p.size] = size_counts.get(p.size, 0) + p.stock
 
     sorted_sizes = _sort_sizes(size_counts.keys())
     sizes = [(s, size_counts[s]) for s in sorted_sizes]
