@@ -17,15 +17,19 @@
         <button
           type="button"
           id="toggleAll"
-          class="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-black transition-colors"
         >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           Seleccionar todas
         </button>
       </div>
 
       <!-- Grid de tallas -->
       <div class="grid grid-cols-2 gap-4">
-        {% for size, count, low_stock in sizes %}
+        {% for size, count in sizes %}
         <div class="relative">
           <input
             type="checkbox"
@@ -39,12 +43,7 @@
             class="flex items-center justify-between w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 hover:bg-gray-50 transition-all"
           >
             <span class="text-gray-900 font-medium">{{ size }}</span>
-            <span class="flex items-center gap-3">
-              {% if low_stock > 0 %}
-              <span class="text-xs text-amber-500">{{ low_stock }} stock bajo</span>
-              {% endif %}
-              <span class="text-xs text-gray-400">{{ count }} prod.</span>
-            </span>
+            <span class="text-xs text-gray-400">{{ count }} prod.</span>
           </label>
         </div>
         {% endfor %}
@@ -92,7 +91,10 @@
     const checkboxes = document.querySelectorAll('input[name="sizes"]');
     const allChecked = Array.from(checkboxes).every((cb) => cb.checked);
     checkboxes.forEach((cb) => (cb.checked = !allChecked));
-    this.textContent = allChecked ? "Seleccionar todas" : "Deseleccionar todas";
+    const svg = allChecked
+      ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+      : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+    this.innerHTML = svg + (allChecked ? " Seleccionar todas" : " Deseleccionar todas");
   });
 
   document.getElementById("downloadButton").addEventListener("click", async function () {

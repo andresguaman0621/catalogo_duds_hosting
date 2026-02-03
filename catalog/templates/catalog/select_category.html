@@ -25,13 +25,17 @@
 
     <!-- Indicador de ultima actualizacion -->
     {% if last_updated %}
-    <p class="text-xs text-gray-400 mb-4">
+    <div class="flex items-center gap-1.5 mb-4 text-sm text-gray-500">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
       Datos cargados: {{ last_updated|date:"d/m/Y H:i" }}
-    </p>
+    </div>
     {% endif %}
 
     <form id="categoryForm" method="GET" class="space-y-4">
-      {% for category, count, low_stock in categories %}
+      {% for category, count in categories %}
       <div class="relative">
         <input
           type="radio"
@@ -46,14 +50,7 @@
           class="flex items-center justify-between w-full p-4 cursor-pointer rounded-lg border border-gray-200 peer-checked:border-black peer-checked:border-2 peer-checked:bg-gray-50 hover:bg-gray-50 transition-all duration-100"
         >
           <span class="text-gray-900 peer-checked:font-medium">{{ category }}</span>
-          <span class="flex items-center gap-3">
-            {% if low_stock > 0 %}
-            <span class="text-xs text-amber-500" title="{{ low_stock }} producto{{ low_stock|pluralize }} con stock bajo">
-              {{ low_stock }} stock bajo
-            </span>
-            {% endif %}
-            <span class="text-xs text-gray-400">{{ count }} prod.</span>
-          </span>
+          <span class="text-xs text-gray-400">{{ count }} prod.</span>
         </label>
       </div>
       {% endfor %}

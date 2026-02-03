@@ -22,7 +22,6 @@ import tempfile
 PRODUCTS_CACHE_KEY = 'wordpress_products'
 PRODUCTS_CACHE_TIMESTAMP_KEY = 'wordpress_products_timestamp'
 PRODUCTS_CACHE_TTL = 300  # 5 minutos
-LOW_STOCK_THRESHOLD = 3
 
 PDF_TEMP_DIR = os.path.join(tempfile.gettempdir(), 'duds_pdfs')
 os.makedirs(PDF_TEMP_DIR, exist_ok=True)
@@ -139,23 +138,18 @@ def select_category(request):
 
     products = get_cached_products()
 
-    # Conteo y stock bajo por categoría
-    category_stats = {}
+    # Conteo de productos por categoría
+    category_counts = {}
     for p in products:
         cat = categorize_product(p.name)
         if cat == "Sin categoría" or cat not in categories:
             continue
-        if cat not in category_stats:
-            category_stats[cat] = {'count': 0, 'low_stock': 0}
-        category_stats[cat]['count'] += 1
-        if p.stock <= LOW_STOCK_THRESHOLD:
-            category_stats[cat]['low_stock'] += 1
+        category_counts[cat] = category_counts.get(cat, 0) + 1
 
-    # Lista de tuplas: (nombre, count, low_stock)
     available_categories = [
-        (cat, category_stats[cat]['count'], category_stats[cat]['low_stock'])
+        (cat, category_counts[cat])
         for cat in categories
-        if cat in category_stats
+        if cat in category_counts
     ]
 
     last_updated = _get_cache_timestamp()
@@ -189,17 +183,13 @@ def select_size(request, category):
     products = get_cached_products()
     category_products = [p for p in products if categorize_product(p.name) == decoded_category]
 
-    # Contar productos y stock bajo por talla
-    size_stats = {}
+    # Contar productos por talla
+    size_counts = {}
     for p in category_products:
-        if p.size not in size_stats:
-            size_stats[p.size] = {'count': 0, 'low_stock': 0}
-        size_stats[p.size]['count'] += 1
-        if p.stock <= LOW_STOCK_THRESHOLD:
-            size_stats[p.size]['low_stock'] += 1
+        size_counts[p.size] = size_counts.get(p.size, 0) + 1
 
-    sorted_sizes = _sort_sizes(size_stats.keys())
-    sizes = [(s, size_stats[s]['count'], size_stats[s]['low_stock']) for s in sorted_sizes]
+    sorted_sizes = _sort_sizes(size_counts.keys())
+    sizes = [(s, size_counts[s]) for s in sorted_sizes]
 
     if request.method == 'POST':
         selected_sizes = request.POST.getlist('sizes')
